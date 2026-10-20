@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using _2048.Scripts.Values;
@@ -11,10 +10,91 @@ namespace _2048.Scripts.Views
         [SerializeField] private Transform[] boards;
         [SerializeField] private GameObject tilePrefab;
         [SerializeField] private Transform tileParent;
-        
+
         private TileView[,] _tiles = new TileView[4, 4];
+        private readonly Queue<BoardCommand> _pendingCommands = new();
+        private bool _isAnimating;
+
+        
+        public bool IsAnimating => _isAnimating;
+private readonly struct BoardCommand
+        {
+            public readonly List<TileMove> Moves;
+            public readonly Vector2Int Position;
+            public readonly int Value;
+            public readonly bool IsMove;
+
+            public BoardCommand(List<TileMove> moves)
+            {
+                Moves = moves;
+                Position = default;
+                Value = 0;
+                IsMove = true;
+            }
+
+            public BoardCommand(Vector2Int position, int value)
+            {
+                Moves = null;
+                Position = position;
+                Value = value;
+                IsMove = false;
+            }
+        }
+
+        public void ResetBoard()
+        {
+            StopAllCoroutines();
+            _pendingCommands.Clear();
+            _isAnimating = false;
+
+            for (int x = 0; x < _tiles.GetLength(0); x++)
+            for (int y = 0; y < _tiles.GetLength(1); y++)
+            {
+                if (_tiles[x, y] != null)
+                    Destroy(_tiles[x, y].gameObject);
+            }
+
+            _tiles = new TileView[4, 4];
+        }
 
         public void GenerateTile(Vector2Int position, int value)
+        {
+            if (_isAnimating)
+            {
+                _pendingCommands.Enqueue(new BoardCommand(position, value));
+                return;
+            }
+
+            CreateTile(position, value);
+        }
+
+        public void PlayMoves(List<TileMove> moves)
+        {
+            if (moves == null || moves.Count == 0)
+                return;
+
+            _pendingCommands.Enqueue(new BoardCommand(moves));
+            if (!_isAnimating)
+                StartCoroutine(ProcessCommandsRoutine());
+        }
+
+        private IEnumerator ProcessCommandsRoutine()
+        {
+            _isAnimating = true;
+
+            while (_pendingCommands.Count > 0)
+            {
+                var command = _pendingCommands.Dequeue();
+                if (command.IsMove)
+                    yield return PlayMovesRoutine(command.Moves);
+                else
+                    CreateTile(command.Position, command.Value);
+            }
+
+            _isAnimating = false;
+        }
+
+        private void CreateTile(Vector2Int position, int value)
         {
             var go = Instantiate(tilePrefab, tileParent);
             var tile = go.GetComponent<TileView>();
@@ -24,15 +104,9 @@ namespace _2048.Scripts.Views
 
             _tiles[position.x, position.y] = tile;
         }
-        
-        public void PlayMoves(List<TileMove> moves)
-        {
-            StartCoroutine(PlayMovesRoutine(moves));
-        }
 
         private IEnumerator PlayMovesRoutine(List<TileMove> moves)
         {
-            // 先保存所有移动的源方块，避免更新映射时丢失引用。
             TileView[] movingTiles = new TileView[moves.Count];
             int completed = 0;
 
@@ -42,7 +116,6 @@ namespace _2048.Scripts.Views
                 movingTiles[i] = _tiles[move.From.x, move.From.y];
             }
 
-            // 同时启动所有移动动画。
             for (int i = 0; i < moves.Count; i++)
             {
                 if (movingTiles[i] == null)
@@ -52,17 +125,12 @@ namespace _2048.Scripts.Views
                 }
 
                 var move = moves[i];
-
                 movingTiles[i].MoveTile(GetPosition(move.To), () => completed++);
             }
 
-            // 等待所有移动动画结束。
             while (completed < moves.Count)
-            {
                 yield return null;
-            }
 
-            // 所有动画结束后，再统一构建新的棋盘映射。
             var nextTiles = new TileView[4, 4];
 
             for (int i = 0; i < moves.Count; i++)
@@ -93,7 +161,7 @@ namespace _2048.Scripts.Views
 
             _tiles = nextTiles;
         }
-        
+
         private Color GetTileColor(int value)
         {
             return value switch
@@ -115,7 +183,7 @@ namespace _2048.Scripts.Views
 
         private Vector3 GetPosition(Vector2Int position)
         {
-            return boards[position.x *  4 + position.y].position;
+            return boards[position.y * 4 + position.x].position;
         }
     }
 }

@@ -20,7 +20,7 @@ namespace _2048.Scripts.Views
         
         public void MoveTile(Vector3 position, Action callBack = null)
         {
-            StartCoroutine(MoveTo(transform, position, 0.15f, callBack));
+            StartCoroutine(MoveTo(transform, position, 0.05f, callBack));
         }
 
         public void SpawnTile(Vector3 position)
@@ -56,7 +56,7 @@ namespace _2048.Scripts.Views
 
         private IEnumerator SpawnAnimation()
         {
-            float duration = 0.1f;
+            float duration = 0.05f;
             float elapsed = 0f;
 
             while (elapsed < duration)
@@ -74,7 +74,7 @@ namespace _2048.Scripts.Views
         
         private IEnumerator MergeAnimation()
         {
-            float duration = 0.1f;
+            float duration = 0.05f;
             float elapsed = 0f;
 
             while (elapsed < duration)

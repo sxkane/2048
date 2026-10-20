@@ -32,6 +32,7 @@ namespace _2048.Scripts.Core
         {
             var moves = new List<TileMove>();
             int score = 0;
+            bool hasMoved = false;
             
             int[] line = new int[_size];
             var origins = new Vector2Int[_size];
@@ -42,28 +43,28 @@ namespace _2048.Scripts.Core
                 // 读取一行或一列
                 for (int j = 0; j < _size; j++)
                 {
-                    int row, col;
+                    int x, y;
 
                     switch (direction)
                     {
                         case Direction.Left:
-                            row = i;
-                            col = j;
+                            x = j;
+                            y = i;
                             break;
 
                         case Direction.Right:
-                            row = i;
-                            col = _size - 1 - j;
+                            x = _size - 1 - j;
+                            y = i;
                             break;
 
                         case Direction.Up:
-                            row = j;
-                            col = i;
+                            x = i;
+                            y = _size - 1 - j;
                             break;
 
                         case Direction.Down:
-                            row = _size - 1 - j;
-                            col = i;
+                            x = i;
+                            y = j;
                             break;
 
                         default:
@@ -71,53 +72,78 @@ namespace _2048.Scripts.Core
                                 nameof(direction), direction, null);
                     }
 
-                    line[j] = _board[row, col];
+                    line[j] = _board[x, y];
 
                     // 原始位置与目标位置都按移动方向排列
-                    origins[j] = new Vector2Int(col, row);
-                    cells[j] = new Vector2Int(col, row);
+                    origins[j] = new Vector2Int(x, y);
+                    cells[j] = new Vector2Int(x, y);
                 }
 
                 // 压缩、合并，并记录移动信息
+                int[] originalLine = (int[])line.Clone();
                 score += ProcessLine(line, origins, cells, moves);
+
+                for (int j = 0; j < _size; j++)
+                {
+                    if (originalLine[j] != line[j])
+                    {
+                        hasMoved = true;
+                        break;
+                    }
+                }
 
                 // 按原来的方向写回棋盘
                 for (int j = 0; j < _size; j++)
                 {
-                    int row, col;
+                    int x, y;
 
                     switch (direction)
                     {
                         case Direction.Left:
-                            row = i;
-                            col = j;
+                            x = j;
+                            y = i;
                             break;
 
                         case Direction.Right:
-                            row = i;
-                            col = _size - 1 - j;
+                            x = _size - 1 - j;
+                            y = i;
                             break;
 
                         case Direction.Up:
-                            row = j;
-                            col = i;
+                            x = i;
+                            y = _size - 1 - j;
                             break;
 
                         default: // Down
-                            row = _size - 1 - j;
-                            col = i;
+                            x = i;
+                            y = j;
                             break;
                     }
 
-                    _board[row, col] = line[j];
+                    _board[x, y] = line[j];
                 }
             }
             
             
+            if (!hasMoved)
+            {
+                if (IsSuccessState())
+                    EventBus.Publish(new GameSuccessEvent());
+                else if (IsBoardLocked())
+                    EventBus.Publish(new GameEndEvent());
+
+                return;
+            }
+
             EventBus.Publish(new TileMoveEvent(moves));
             EventBus.Publish(new AddScoreEvent(_score, score));
-            
             _score += score;
+
+            bool generated = RandomizeBoard();
+            if (IsSuccessState())
+                EventBus.Publish(new GameSuccessEvent());
+            else if (!generated && IsBoardLocked())
+                EventBus.Publish(new GameEndEvent());
         }
 
         private int ProcessLine(int[] line, Vector2Int[] origins, Vector2Int[] cells, List<TileMove> moves)
@@ -172,18 +198,22 @@ namespace _2048.Scripts.Core
         }
 
 
-        public void RandomizeBoard()
+        public bool RandomizeBoard()
         {
-            var position = GetRandomEmptyBoard();
-
+            if (!GetRandomEmptyBoard(out Vector2Int position))
+            {
+                return false;
+            }
+            
             // 生成格子的逻辑：
             // 先 100% 为 2
-            _board[position[0], position[1]] = 2;
-            
+            _board[position.x, position.y] = 2;
             EventBus.Publish(new TileGenerateEvent(position, 2));
+            
+            return true;
         }
 
-        private Vector2Int GetRandomEmptyBoard()
+        private bool GetRandomEmptyBoard(out Vector2Int position)
         {
             var emptyBoards = new List<Vector2Int>();
 
@@ -196,7 +226,77 @@ namespace _2048.Scripts.Core
                 }
             }
 
-            return emptyBoards[Random.Range(0, emptyBoards.Count)];
+            if (emptyBoards.Count == 0)
+            {
+
+                position = new Vector2Int(-1, -1);
+                return false;
+            }
+
+            position = emptyBoards[Random.Range(0, emptyBoards.Count)];
+            return true;
         }
-    }
+
+        private bool IsBoardLocked()
+        {
+            if (GetEmptyBoardCount() > 0)
+                return false;
+
+            for (int x = 0; x < _size; x++)
+            for (int y = 0; y < _size; y++)
+            {
+                int value = _board[x, y];
+                if (x + 1 < _size && _board[x + 1, y] == value)
+                    return false;
+                if (y + 1 < _size && _board[x, y + 1] == value)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private bool IsSuccessState()
+        {
+            if (GetEmptyBoardCount() > 0)
+                return false;
+
+            var found = new bool[_size * _size];
+            for (int x = 0; x < _size; x++)
+            for (int y = 0; y < _size; y++)
+            {
+                int value = _board[x, y];
+                if (value < 2 || (value & (value - 1)) != 0)
+                    return false;
+
+                int exponent = 0;
+                for (int power = value; power > 1; power >>= 1)
+                    exponent++;
+
+                if (exponent < 1 || exponent > found.Length || found[exponent - 1])
+                    return false;
+
+                found[exponent - 1] = true;
+            }
+
+            for (int i = 0; i < found.Length; i++)
+            {
+                if (!found[i])
+                    return false;
+            }
+
+            return true;
+        }
+
+        private int GetEmptyBoardCount()
+        {
+            int count = 0;
+            for (int x = 0; x < _size; x++)
+            for (int y = 0; y < _size; y++)
+            {
+                if (_board[x, y] == 0)
+                    count++;
+            }
+
+            return count;
+        }    }
 }

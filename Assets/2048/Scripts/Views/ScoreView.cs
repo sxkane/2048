@@ -16,7 +16,7 @@ namespace _2048.Scripts.Views
             _score = 0;
             _bestScore = best;
             currentScore.text = "0";
-            bestScore.text = bestScore.ToString();
+            bestScore.text = _bestScore.ToString();
         }
 
         public void RefreshScore(int score)
