@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using _2048.Scripts.Events;
 using TMPro;
 using UnityEngine;
@@ -47,18 +47,18 @@ namespace _2048.Scripts.Views
         
         private void OnScoreChanged(AddScoreEvent addScoreEvent)
         {
-            scoreView.RefreshScore(addScoreEvent.Score + addScoreEvent.AddScore);
+            scoreView.RefreshScore(addScoreEvent.Score);
         }
 
         private void OnGameRestart(GameRestartEvent gameRestartEvent)
         {
-            scoreView.InitScore(0);
+            scoreView.InitScore(Mathf.Max(gameRestartEvent.BestScore, scoreView.BestScore));
             gameEndView.Hide();
         }
 
         private void OnButtonClicked()
         {
-            EventBus.Publish(new GameRestartEvent());
+            EventBus.Publish(new GameRestartEvent(scoreView.BestScore));
         }
 
         private void OnGameEnd(GameEndEvent gameEndEvent)

@@ -1,6 +1,7 @@
 using _2048.Scripts.Core;
 using _2048.Scripts.Events;
 using _2048.Scripts.Input;
+using _2048.Scripts.Saving;
 using _2048.Scripts.Values;
 using _2048.Scripts.Views;
 using UnityEngine;
@@ -13,10 +14,12 @@ namespace _2048.Scripts
         [SerializeField] private BoardView boardView;
 
         private GameCore _gameCore;
+        private SaveManager _saveManager;
 
         private void Awake()
         {
             _gameCore = new GameCore();
+            _saveManager = GetComponent<SaveManager>();
         }
 
         private void OnEnable()
@@ -33,7 +36,8 @@ namespace _2048.Scripts
 
         private void Start()
         {
-            EventBus.Publish(new GameRestartEvent());
+            int bestScore = _saveManager == null ? 0 : _saveManager.Load();
+            EventBus.Publish(new GameRestartEvent(bestScore));
             Debug.Log("Game started");
         }
 

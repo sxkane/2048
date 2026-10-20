@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using _2048.Scripts.Events;
+using _2048.Scripts.Views;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,6 +10,12 @@ namespace _2048.Scripts.Views
     {
         [SerializeField] public CanvasGroup canvasGroup;
         [SerializeField] private Button restartButton;
+        private ScoreView _scoreView;
+
+        private void Awake()
+        {
+            _scoreView = FindFirstObjectByType<ScoreView>();
+        }
 
         private void OnEnable()
         {
@@ -22,7 +29,7 @@ namespace _2048.Scripts.Views
 
         private void OnButtonClicked()
         {
-            EventBus.Publish(new GameRestartEvent());
+            EventBus.Publish(new GameRestartEvent(_scoreView == null ? 0 : _scoreView.BestScore));
         }
 
         public void Hide()

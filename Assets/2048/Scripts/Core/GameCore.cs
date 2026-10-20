@@ -136,8 +136,8 @@ namespace _2048.Scripts.Core
             }
 
             EventBus.Publish(new TileMoveEvent(moves));
-            EventBus.Publish(new AddScoreEvent(_score, score));
             _score += score;
+            EventBus.Publish(new AddScoreEvent(_score, score));
 
             bool generated = RandomizeBoard();
             if (IsSuccessState())

@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 
 namespace _2048.Scripts.Views
@@ -11,6 +11,8 @@ namespace _2048.Scripts.Views
         private int _score;
         private int _bestScore;
 
+        public int BestScore => _bestScore;
+
         public void InitScore(int best)
         {
             _score = 0;
@@ -21,10 +23,7 @@ namespace _2048.Scripts.Views
 
         public void RefreshScore(int score)
         {
-            if (_score == score)
-                return;
-            
-            _score = score;
+_score = score;
             currentScore.text = _score.ToString();
 
             if (_score > _bestScore)
