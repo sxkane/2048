@@ -23,6 +23,9 @@ namespace _2048.Scripts.Core
         {
             _board = new int[_size, _size];
             _score = 0;
+            
+            RandomizeBoard();
+            RandomizeBoard();
         }
 
         public void Move(Direction direction)
@@ -109,11 +112,12 @@ namespace _2048.Scripts.Core
                     _board[row, col] = line[j];
                 }
             }
-
-            _score += score;
             
-            EventBus.Publish(new GameCommandEvent(moves));
-            EventBus.Publish(new AddScoreEvent(score));
+            
+            EventBus.Publish(new TileMoveEvent(moves));
+            EventBus.Publish(new AddScoreEvent(_score, score));
+            
+            _score += score;
         }
 
         private int ProcessLine(int[] line, Vector2Int[] origins, Vector2Int[] cells, List<TileMove> moves)
@@ -142,18 +146,19 @@ namespace _2048.Scripts.Core
 
                 if (read + 1 < count && value == line[read + 1])
                 {
-                    score += value * 2;
+                    int resultValue = value * 2;
+                    score += resultValue;
                     
-                    moves.Add(new TileMove(origins[read], to, true));
+                    moves.Add(new TileMove(origins[read], to, true, resultValue));
 
-                    moves.Add(new TileMove(origins[read + 1], to, true));
+                    moves.Add(new TileMove(origins[read + 1], to, true, resultValue));
 
-                    line[write++] = value * 2;
+                    line[write++] = resultValue;
                     read += 2;
                 }
                 else
                 {
-                    moves.Add(new TileMove(origins[read], to));
+                    moves.Add(new TileMove(origins[read], to, false, value));
 
                     line[write++] = value;
                     read++;
@@ -174,6 +179,8 @@ namespace _2048.Scripts.Core
             // 生成格子的逻辑：
             // 先 100% 为 2
             _board[position[0], position[1]] = 2;
+            
+            EventBus.Publish(new TileGenerateEvent(position, 2));
         }
 
         private Vector2Int GetRandomEmptyBoard()

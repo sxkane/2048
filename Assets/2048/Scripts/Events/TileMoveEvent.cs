@@ -3,11 +3,11 @@ using _2048.Scripts.Values;
 
 namespace _2048.Scripts.Events
 {
-    public class GameCommandEvent : IEvent
+    public class TileMoveEvent : IEvent
     {
         public List<TileMove> TileMoves { get; }
         
-        public  GameCommandEvent(List<TileMove> tileMoves)
+        public  TileMoveEvent(List<TileMove> tileMoves)
         {
             TileMoves = tileMoves;
         }

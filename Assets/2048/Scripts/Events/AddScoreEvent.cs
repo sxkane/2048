@@ -3,10 +3,12 @@
     public class AddScoreEvent : IEvent
     {
         public int Score { get; }
-        
-        public AddScoreEvent(int score)
+        public int AddScore { get; }
+
+        public AddScoreEvent(int score, int addScore)
         {
             Score = score;
+            AddScore = addScore;
         } 
     }
 }
